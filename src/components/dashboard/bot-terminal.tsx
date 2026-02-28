@@ -93,8 +93,16 @@ export default function BotTerminal() {
                             className="flex items-center gap-2 px-6 py-3 border border-brand-danger/30 text-brand-danger rounded-xl font-semibold hover:bg-brand-danger hover:text-white disabled:opacity-50 transition-all text-sm"
                         >
                             <Trash2 className="w-4 h-4" />
-                            Logout
+                            Reset / Logout
                         </button>
+                        {botData.status === "CONNECTING" && (
+                            <button
+                                onClick={() => handleAction("logout")}
+                                className="text-[10px] text-brand-danger hover:underline font-bold uppercase tracking-widest opacity-50 hover:opacity-100 transition-opacity"
+                            >
+                                Force Reset Stuck Session
+                            </button>
+                        )}
                     </div>
                 </div>
 

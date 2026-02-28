@@ -247,13 +247,25 @@ class WhatsAppManager {
     }
 
     async logout() {
+        // Try to close socket if it exists
         if (this.sock) {
-            try { await this.sock.logout(); } catch (e) { }
-            this.sock = null;
-            this.status = "DISCONNECTED";
-            this.qr = null;
-            await pool.query("DELETE FROM bot_sessions WHERE id LIKE 'main-session-%'");
+            try {
+                // Don't wait too long for socket logout if network is dead
+                await Promise.race([
+                    this.sock.logout(),
+                    new Promise((_, reject) => setTimeout(() => reject(new Error("Timeout")), 3000))
+                ]).catch(() => {
+                    if (this.sock?.end) this.sock.end();
+                });
+            } catch (e) { }
         }
+
+        // Always reset state and clear DB
+        this.sock = null;
+        this.status = "DISCONNECTED";
+        this.qr = null;
+        await pool.query("DELETE FROM bot_sessions WHERE id LIKE 'main-session-%'");
+        console.log("WhatsApp Session cleared (Force Logout)");
     }
 }
 
