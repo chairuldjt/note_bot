@@ -8,6 +8,9 @@ const inter = Inter({ subsets: ["latin"] });
 export const metadata: Metadata = {
   title: "NoteBot - Dashboard",
   description: "WhatsApp Bot Management System",
+  icons: {
+    icon: "/favicon.png",
+  },
 };
 
 export default function RootLayout({
