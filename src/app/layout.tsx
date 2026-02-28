@@ -9,7 +9,7 @@ export const metadata: Metadata = {
   title: "NoteBot - Dashboard",
   description: "WhatsApp Bot Management System",
   icons: {
-    icon: "/favicon.png",
+    icon: "/favicon.svg",
   },
 };
 
