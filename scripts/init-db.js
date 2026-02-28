@@ -91,6 +91,43 @@ async function main() {
             const content = fs.readFileSync(sqlFile, 'utf8');
             const lines = content.split('\n');
 
+            function parseSqlValues(line) {
+                const values = [];
+                let current = "";
+                let inQuote = false;
+                let escaped = false;
+
+                // Strip the surrounding parentheses and optional trailing comma/semicolon
+                const content = line.trim().replace(/^\(/, '').replace(/\),?$/, '').replace(/\);?$/, '');
+
+                for (let i = 0; i < content.length; i++) {
+                    const char = content[i];
+                    if (escaped) {
+                        current += char;
+                        escaped = false;
+                    } else if (char === '\\') {
+                        escaped = true;
+                        current += char;
+                    } else if (char === "'" && !inQuote) {
+                        inQuote = true;
+                    } else if (char === "'" && inQuote) {
+                        if (content[i + 1] === "'") { // Escaped quote ''
+                            current += "'";
+                            i++;
+                        } else {
+                            inQuote = false;
+                        }
+                    } else if (char === "," && !inQuote) {
+                        values.push(current.trim());
+                        current = "";
+                    } else {
+                        current += char;
+                    }
+                }
+                values.push(current.trim());
+                return values.map(v => v.replace(/^'/, '').replace(/'$/, '').replace(/\\'/g, "'").replace(/\\r\\n/g, '\n').replace(/\\n/g, '\n'));
+            }
+
             let currentTable = '';
             for (let line of lines) {
                 line = line.trim();
@@ -99,40 +136,37 @@ async function main() {
                 else if (line.startsWith('INSERT INTO `users`')) currentTable = 'users';
 
                 if (line.startsWith('(') && (line.endsWith('),') || line.endsWith(');')) && !line.includes('INSERT INTO')) {
-                    const valuesPart = line.substring(1, line.lastIndexOf(')')).split("','").map(s => s.trim().replace(/^'/, '').replace(/'$/, ''));
+                    const vals = parseSqlValues(line);
 
-                    if (currentTable === 'bot_commands') {
+                    if (currentTable === 'bot_commands' && vals.length >= 3) {
                         // (id, command, response, created_at)
-                        const vals = line.substring(1, line.lastIndexOf(')')).split(',');
-                        const id = vals[0].trim();
-                        const cmd = vals[1].trim().replace(/^'/, '').replace(/'$/, '');
-                        const res = vals[2].trim().replace(/^'/, '').replace(/'$/, '');
-                        const cat = vals[3].trim().replace(/^'/, '').replace(/'$/, '');
+                        const id = vals[0];
+                        const cmd = vals[1];
+                        const res = vals[2];
+                        const cat = vals[3] || new Date().toISOString().slice(0, 19).replace('T', ' ');
                         await connection.query(
                             'INSERT INTO bot_commands (id, command, response, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?)',
                             [id, cmd, res, cat, cat]
                         );
-                    } else if (currentTable === 'kas') {
+                    } else if (currentTable === 'kas' && vals.length >= 4) {
                         // (id, nomor, nama, jumlah, tanggal)
-                        const vals = line.substring(1, line.lastIndexOf(')')).split(',');
-                        const id = vals[0].trim();
-                        const nomor = vals[1].trim().replace(/^'/, '').replace(/'$/, '');
-                        const nama = vals[2].trim().replace(/^'/, '').replace(/'$/, '');
-                        const jumlah = vals[3].trim();
-                        const tanggal = vals[4].trim().replace(/^'/, '').replace(/'$/, '');
+                        const id = vals[0];
+                        const nomor = vals[1];
+                        const nama = vals[2];
+                        const jumlah = vals[3];
+                        const tanggal = vals[4] || new Date().toISOString().slice(0, 19).replace('T', ' ');
                         await connection.query(
                             'INSERT INTO kas (id, nomor, nama, jumlah, tanggal) VALUES (?, ?, ?, ?, ?)',
                             [id, nomor, nama, jumlah, tanggal]
                         );
-                    } else if (currentTable === 'users') {
+                    } else if (currentTable === 'users' && vals.length >= 4) {
                         // (id, username, password, created_at, status, role)
-                        const vals = line.substring(1, line.lastIndexOf(')')).split(',');
-                        const id = vals[0].trim();
-                        const username = vals[1].trim().replace(/^'/, '').replace(/'$/, '');
-                        const pass = vals[2].trim().replace(/^'/, '').replace(/'$/, '');
-                        const cat = vals[3].trim().replace(/^'/, '').replace(/'$/, '');
-                        const status = vals[4].trim().replace(/^'/, '').replace(/'$/, '').toUpperCase();
-                        const role = vals[5].trim().replace(/^'/, '').replace(/'$/, '').toUpperCase();
+                        const id = vals[0];
+                        const username = vals[1];
+                        const pass = vals[2];
+                        const cat = vals[3] || new Date().toISOString().slice(0, 19).replace('T', ' ');
+                        const status = (vals[4] || 'PENDING').toUpperCase();
+                        const role = (vals[5] || 'USER').toUpperCase();
                         await connection.query(
                             'INSERT INTO users (id, username, password, status, role, createdAt, updatedAt) VALUES (?, ?, ?, ?, ?, ?, ?)',
                             [id, username, pass, status, role, cat, cat]
